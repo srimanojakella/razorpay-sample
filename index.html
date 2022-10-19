@@ -1,0 +1,94 @@
+<html>
+
+<head>
+    <title>Razorpay test</title>
+</head>
+
+<body>
+    <button onclick="displayRazorpay()">pay 1rupee</button>
+    <script>
+        const loadScript = (src) => {
+            const razorpayClass = document.getElementsByClassName("razorpay-container").length
+            if(!razorpayClass){
+                return new Promise((resolve) => {
+                    const script = document.createElement("script");
+                    script.src = src;
+                    script.onload = () => {
+                        resolve(true);
+                    };
+                    script.onerror = () => {
+                        resolve(false);
+                    };
+                    document.body.appendChild(script);
+                });
+            }
+            return true
+        };
+
+
+
+        const displayRazorpay = async () => {
+            const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
+
+            if (!res) {
+                alert("Razorpay SDK failed to load. Are you online?");
+                return;
+            }
+
+            let result = await fetch("http://localhost:8080/razorpay/initiate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+            result = await result.json();
+            if (!result) {
+                alert("Server error. Are you online?");
+                return;
+            }
+
+            const { amount, id: order_id, currency } = result.data;
+
+            const options = {
+                key: "rzp_test_Lz6gMyauxbNG3y", // Enter the Key ID generated from the Dashboard
+                amount: amount.toString(),
+                currency: currency,
+                name: "Manoj",
+                description: "Test",
+                // image: { logo },
+                // order_id: order_id,
+                handler: async function (response) {
+                    const data = {
+                        orderCreationId: order_id,
+                        razorpayPaymentId: response.razorpay_payment_id,
+                        razorpayOrderId: response.razorpay_order_id,
+                        razorpaySignature: response.razorpay_signature,
+                    };
+
+                    let result = await fetch("http://localhost:8080/razorpay/success", {
+                        method: "POST",
+                        body: JSON.stringify(data),
+                        json: true,
+                        headers: { "Content-Type": "application/json" },
+                    });
+                    result = await result.json();
+                    alert(result.msg);
+                },
+                prefill: {
+                    name: "Sri Manoj",
+                    email: "akella.manoj@olaelectric.com",
+                    contact: "9581670161",
+                },
+                notes: {
+                    address: "ola electric",
+                },
+                // theme: {
+                //     color: "#e67e00",
+                // },
+            };
+
+            const paymentObject = new window.Razorpay(options);
+            paymentObject.open();
+        };
+    </script>
+</body>
+
+</html>
